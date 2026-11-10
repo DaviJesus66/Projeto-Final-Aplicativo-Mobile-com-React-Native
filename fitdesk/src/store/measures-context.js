@@ -1,8 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useState } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { newId } from '../utils/date';
-
-const STORAGE_KEY = '@measures';
+import { createMeasure, removeMeasure, subscribeMeasures } from '../services/measuresService';
 
 // Cada medição: { id, weight (kg), height (cm), date }
 export function measuresReducer(state, action) {
@@ -23,45 +20,36 @@ const MeasuresContext = createContext(null);
 export function MeasuresContextProvider({ children }) {
   const [measures, dispatch] = useReducer(measuresReducer, []);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    let active = true;
-    async function load() {
-      try {
-        const raw = await AsyncStorage.getItem(STORAGE_KEY);
-        if (raw && active) {
-          const saved = JSON.parse(raw);
-          if (Array.isArray(saved)) dispatch({ type: 'SET', payload: saved });
-        }
-      } catch (error) {
-        console.warn('Falha ao ler as medidas salvas:', error);
-      } finally {
-        if (active) setIsLoaded(true);
+    const unsubscribe = subscribeMeasures(
+      (list) => {
+        dispatch({ type: 'SET', payload: list });
+        setError(null);
+        setIsLoaded(true);
+      },
+      (err) => {
+        console.warn('Falha ao ler as medidas do Firestore:', err);
+        setError('Não foi possível carregar as medidas. Verifique a conexão.');
+        setIsLoaded(true);
       }
-    }
-    load();
-    return () => {
-      active = false;
-    };
+    );
+    return unsubscribe;
   }, []);
-
-  useEffect(() => {
-    if (!isLoaded) return;
-    async function save() {
-      try {
-        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(measures));
-      } catch (error) {
-        console.warn('Falha ao salvar as medidas:', error);
-      }
-    }
-    save();
-  }, [measures, isLoaded]);
 
   const addMeasure = useCallback((data) => {
-    dispatch({ type: 'ADD', payload: { id: newId(), date: new Date().toISOString(), ...data } });
+    createMeasure({ date: new Date().toISOString(), ...data }).catch((err) => {
+      console.warn('Falha ao salvar a medida:', err);
+      setError('Não foi possível salvar a medida.');
+    });
   }, []);
+
   const deleteMeasure = useCallback((id) => {
-    dispatch({ type: 'DELETE', payload: id });
+    removeMeasure(id).catch((err) => {
+      console.warn('Falha ao excluir a medida:', err);
+      setError('Não foi possível excluir a medida.');
+    });
   }, []);
 
   const sorted = useMemo(
@@ -70,8 +58,8 @@ export function MeasuresContextProvider({ children }) {
   );
 
   const value = useMemo(
-    () => ({ measures: sorted, isLoaded, addMeasure, deleteMeasure }),
-    [sorted, isLoaded, addMeasure, deleteMeasure]
+    () => ({ measures: sorted, isLoaded, error, addMeasure, deleteMeasure }),
+    [sorted, isLoaded, error, addMeasure, deleteMeasure]
   );
 
   return <MeasuresContext.Provider value={value}>{children}</MeasuresContext.Provider>;

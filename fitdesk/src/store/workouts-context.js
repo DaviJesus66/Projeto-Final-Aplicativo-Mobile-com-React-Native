@@ -1,11 +1,15 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useState } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { newId } from '../utils/date';
+import {
+  createWorkout,
+  editWorkout,
+  removeAllWorkouts,
+  removeWorkout,
+  subscribeWorkouts,
+} from '../services/workoutsService';
 
-const STORAGE_KEY = '@workouts';
-
-// Modelo de cada treino registrado: { id, exercise, group, muscle, sets, reps, date }
-// O reducer sempre devolve um novo array (sem push, splice ou mutação direta).
+// Modelo de cada treino: { id, exercise, group, muscle, sets, reps, date }
+// O Firestore é a fonte da verdade: as telas escrevem pelos serviços e o
+// onSnapshot devolve a lista atualizada, que entra no estado por SET.
 export function workoutsReducer(state, action) {
   switch (action.type) {
     case 'ADD':
@@ -28,65 +32,46 @@ const WorkoutsContext = createContext(null);
 export function WorkoutsContextProvider({ children }) {
   const [workouts, dispatch] = useReducer(workoutsReducer, []);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [error, setError] = useState(null);
 
-  // Carrega os dados salvos ao iniciar e dispara SET.
   useEffect(() => {
-    let active = true;
-    async function load() {
-      try {
-        const raw = await AsyncStorage.getItem(STORAGE_KEY);
-        if (raw && active) {
-          const saved = JSON.parse(raw);
-          if (Array.isArray(saved)) dispatch({ type: 'SET', payload: saved });
-        }
-      } catch (error) {
-        console.warn('Falha ao ler os treinos salvos:', error);
-      } finally {
-        if (active) setIsLoaded(true);
+    const unsubscribe = subscribeWorkouts(
+      (list) => {
+        dispatch({ type: 'SET', payload: list });
+        setError(null);
+        setIsLoaded(true);
+      },
+      (err) => {
+        console.warn('Falha ao ler os treinos do Firestore:', err);
+        setError('Não foi possível carregar os treinos. Verifique a conexão.');
+        setIsLoaded(true);
       }
-    }
-    load();
-    return () => {
-      active = false;
-    };
+    );
+    return unsubscribe;
   }, []);
 
-  // Salva a cada alteração, mas só depois do carregamento inicial
-  // (evita sobrescrever os dados salvos com a lista vazia).
-  useEffect(() => {
-    if (!isLoaded) return;
-    async function save() {
-      try {
-        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(workouts));
-      } catch (error) {
-        console.warn('Falha ao salvar os treinos:', error);
-      }
-    }
-    save();
-  }, [workouts, isLoaded]);
-
-  const addWorkout = useCallback((data) => {
-    dispatch({ type: 'ADD', payload: { id: newId(), ...data } });
-  }, []);
-  const updateWorkout = useCallback((id, data) => {
-    dispatch({ type: 'UPDATE', payload: { id, data } });
-  }, []);
-  const deleteWorkout = useCallback((id) => {
-    dispatch({ type: 'DELETE', payload: id });
-  }, []);
-  const clearWorkouts = useCallback(() => {
-    dispatch({ type: 'SET', payload: [] });
+  // Não usamos await nas telas: com o Firestore offline a promise só resolve ao reconectar.
+  const run = useCallback((promise, message) => {
+    promise.catch((err) => {
+      console.warn(message, err);
+      setError(message);
+    });
   }, []);
 
-  // Sempre do mais recente para o mais antigo.
+  const addWorkout = useCallback((data) => run(createWorkout(data), 'Não foi possível salvar o treino.'), [run]);
+  const updateWorkout = useCallback((id, data) => run(editWorkout(id, data), 'Não foi possível atualizar o treino.'), [run]);
+  const deleteWorkout = useCallback((id) => run(removeWorkout(id), 'Não foi possível excluir o treino.'), [run]);
+  const clearWorkouts = useCallback(() => run(removeAllWorkouts(), 'Não foi possível limpar os treinos.'), [run]);
+  const clearError = useCallback(() => setError(null), []);
+
   const sorted = useMemo(
     () => [...workouts].sort((a, b) => new Date(b.date) - new Date(a.date)),
     [workouts]
   );
 
   const value = useMemo(
-    () => ({ workouts: sorted, isLoaded, addWorkout, updateWorkout, deleteWorkout, clearWorkouts }),
-    [sorted, isLoaded, addWorkout, updateWorkout, deleteWorkout, clearWorkouts]
+    () => ({ workouts: sorted, isLoaded, error, clearError, addWorkout, updateWorkout, deleteWorkout, clearWorkouts }),
+    [sorted, isLoaded, error, clearError, addWorkout, updateWorkout, deleteWorkout, clearWorkouts]
   );
 
   return <WorkoutsContext.Provider value={value}>{children}</WorkoutsContext.Provider>;
