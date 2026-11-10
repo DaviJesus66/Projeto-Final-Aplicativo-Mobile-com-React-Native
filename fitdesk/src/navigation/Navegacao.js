@@ -19,7 +19,7 @@ import Configuracoes from '../screens/Configuracoes';
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
-// [ícone ativo, ícone inativo]
+// [ícone ativo, ícone  inativo]
 const TAB_ICONS = {
   Treinar: ['barbell', 'barbell-outline'],
   Historico: ['list', 'list-outline'],
