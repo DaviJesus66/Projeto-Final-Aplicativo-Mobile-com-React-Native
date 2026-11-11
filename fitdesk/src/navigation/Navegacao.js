@@ -10,6 +10,7 @@ import { useWorkouts } from '../store/workouts-context';
 import { useMeasures } from '../store/measures-context';
 import EscolherFoco from '../screens/EscolherFoco';
 import FichaTreino from '../screens/FichaTreino';
+import ExecutarExercicio from '../screens/ExecutarExercicio';
 import TodosTreinos from '../screens/TodosTreinos';
 import TreinosRecentes from '../screens/TreinosRecentes';
 import GerenciarTreino from '../screens/GerenciarTreino';
@@ -19,7 +20,7 @@ import Configuracoes from '../screens/Configuracoes';
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
-// [ícone ativo, ícone inativo]
+
 const TAB_ICONS = {
   Treinar: ['barbell', 'barbell-outline'],
   Historico: ['list', 'list-outline'],
@@ -117,6 +118,7 @@ export default function Navegacao() {
       >
         <Stack.Screen name="Abas" component={Abas} options={{ headerShown: false }} />
         <Stack.Screen name="FichaTreino" component={FichaTreino} options={{ title: 'Ficha de treino' }} />
+        <Stack.Screen name="ExecutarExercicio" component={ExecutarExercicio} options={{ title: 'Exercício' }} />
         <Stack.Screen name="GerenciarTreino" component={GerenciarTreino} options={{ title: 'Novo treino' }} />
       </Stack.Navigator>
     </NavigationContainer>
