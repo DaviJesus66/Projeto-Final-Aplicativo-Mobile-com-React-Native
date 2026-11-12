@@ -7,9 +7,16 @@ export default function Chip({ label, selected = false, onPress }) {
   return (
     <Pressable
       onPress={onPress}
-      style={[
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ selected }}
+      style={({ pressed }) => [
         styles.chip,
-        { backgroundColor: selected ? colors.primary : colors.chip, borderColor: selected ? colors.primary : colors.border },
+        {
+          backgroundColor: selected ? colors.primary : colors.chip,
+          borderColor: selected ? colors.primary : colors.border,
+          opacity: pressed ? 0.85 : 1,
+        },
       ]}
     >
       <Text style={{ color: selected ? colors.onPrimary : colors.text, fontWeight: '600' }}>{label}</Text>

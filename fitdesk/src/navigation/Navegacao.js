@@ -1,5 +1,4 @@
 import React from 'react';
-import { ActivityIndicator, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { DarkTheme, DefaultTheme, NavigationContainer } from '@react-navigation/native';
@@ -15,6 +14,8 @@ import TreinosRecentes from '../screens/TreinosRecentes';
 import GerenciarTreino from '../screens/GerenciarTreino';
 import PesoAltura from '../screens/PesoAltura';
 import Configuracoes from '../screens/Configuracoes';
+import TelaLoading from '../components/ui/TelaLoading';
+import ErroBoundary from '../components/ui/ErroBoundary';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -86,11 +87,7 @@ export default function Navegacao() {
   const { isLoaded: measuresLoaded } = useMeasures();
 
   if (!themeLoaded || !workoutsLoaded || !measuresLoaded) {
-    return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background }}>
-        <ActivityIndicator size="large" color={colors.primary} />
-      </View>
-    );
+    return <TelaLoading message="Carregando..." />;
   }
 
   const base = isDark ? DarkTheme : DefaultTheme;
@@ -107,18 +104,20 @@ export default function Navegacao() {
   };
 
   return (
-    <NavigationContainer theme={navTheme}>
-      <StatusBar style={isDark ? 'light' : 'dark'} />
-      <Stack.Navigator
-        screenOptions={{
-          headerStyle: { backgroundColor: colors.card },
-          headerTintColor: colors.text,
-        }}
-      >
-        <Stack.Screen name="Abas" component={Abas} options={{ headerShown: false }} />
-        <Stack.Screen name="FichaTreino" component={FichaTreino} options={{ title: 'Ficha de treino' }} />
-        <Stack.Screen name="GerenciarTreino" component={GerenciarTreino} options={{ title: 'Novo treino' }} />
-      </Stack.Navigator>
-    </NavigationContainer>
+    <ErroBoundary>
+      <NavigationContainer theme={navTheme}>
+        <StatusBar style={isDark ? 'light' : 'dark'} />
+        <Stack.Navigator
+          screenOptions={{
+            headerStyle: { backgroundColor: colors.card },
+            headerTintColor: colors.text,
+          }}
+        >
+          <Stack.Screen name="Abas" component={Abas} options={{ headerShown: false }} />
+          <Stack.Screen name="FichaTreino" component={FichaTreino} options={{ title: 'Ficha de treino' }} />
+          <Stack.Screen name="GerenciarTreino" component={GerenciarTreino} options={{ title: 'Novo treino' }} />
+        </Stack.Navigator>
+      </NavigationContainer>
+    </ErroBoundary>
   );
 }
