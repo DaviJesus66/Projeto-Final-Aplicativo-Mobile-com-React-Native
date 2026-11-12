@@ -4,7 +4,7 @@ import { useTheme } from '../store/theme-context';
 import { useWorkouts } from '../store/workouts-context';
 import Chip from '../components/ui/Chip';
 import Botao from '../components/ui/Botao';
-import { cardShadow, radius } from '../constants/theme';
+import Cartao from '../components/ui/Cartao';
 
 const MODES = [
   { value: 'system', label: 'Automático' },
@@ -25,7 +25,7 @@ export default function Configuracoes() {
 
   return (
     <ScrollView style={{ backgroundColor: colors.background }} contentContainerStyle={styles.content}>
-      <View style={[styles.card, cardShadow, { backgroundColor: colors.card }]}>
+      <Cartao style={styles.card}>
         <Text style={[styles.title, { color: colors.text }]}>Tema do aplicativo</Text>
         <Text style={{ color: colors.textMuted, marginBottom: 12 }}>
           Automático acompanha o tema do seu aparelho.
@@ -35,22 +35,22 @@ export default function Configuracoes() {
             <Chip key={m.value} label={m.label} selected={mode === m.value} onPress={() => setMode(m.value)} />
           ))}
         </View>
-      </View>
+      </Cartao>
 
-      <View style={[styles.card, cardShadow, { backgroundColor: colors.card }]}>
+      <Cartao style={styles.card}>
         <Text style={[styles.title, { color: colors.text }]}>Dados</Text>
         <Text style={{ color: colors.textMuted, marginBottom: 12 }}>
           {workouts.length} {workouts.length === 1 ? 'treino registrado' : 'treinos registrados'} neste aparelho.
         </Text>
         <Botao title="Limpar todos os treinos" variant="danger" icon="trash-outline" onPress={confirmClear} disabled={workouts.length === 0} />
-      </View>
+      </Cartao>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   content: { padding: 16 },
-  card: { padding: 16, borderRadius: radius.lg, marginBottom: 16 },
+  card: { marginBottom: 16 },
   title: { fontSize: 18, fontWeight: '800', marginBottom: 4 },
   chips: { flexDirection: 'row', flexWrap: 'wrap' },
 });
