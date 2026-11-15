@@ -17,7 +17,7 @@ export default function FichaTreino({ route, navigation }) {
     navigation.setOptions({ title: `Ficha de ${muscle}` });
   }, [navigation, muscle]);
 
-
+  // Exercícios desta ficha que já foram registrados hoje.
   const feitosHoje = useMemo(() => {
     const hoje = new Date();
     return new Set(workouts.filter((w) => sameDay(w.date, hoje)).map((w) => w.exercise));

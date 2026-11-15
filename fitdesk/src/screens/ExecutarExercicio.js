@@ -4,10 +4,11 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '../store/theme-context';
 import { useWorkouts } from '../store/workouts-context';
+import { useFeedback } from '../store/feedback-context';
 import Botao from '../components/ui/Botao';
 import { cardShadow, radius } from '../constants/theme';
 
-
+// Haptics pode não existir em alguns aparelhos/emuladores, por isso nunca quebra o fluxo.
 async function vibrar(tipo) {
   try {
     if (tipo === 'sucesso') {
@@ -29,6 +30,7 @@ function formatTempo(segundos) {
 export default function ExecutarExercicio({ route, navigation }) {
   const { colors } = useTheme();
   const { addWorkout } = useWorkouts();
+  const { showSuccess } = useFeedback();
   const { exercise, group, muscle, sets, reps } = route.params;
 
   const [iniciado, setIniciado] = useState(false);
@@ -43,14 +45,14 @@ export default function ExecutarExercicio({ route, navigation }) {
     navigation.setOptions({ title: exercise });
   }, [navigation, exercise]);
 
-  
+  // Cronômetro do exercício: roda enquanto está em execução e não terminou.
   useEffect(() => {
     if (!iniciado || terminou) return undefined;
     const id = setInterval(() => setSegundos((s) => s + 1), 1000);
     return () => clearInterval(id);
   }, [iniciado, terminou]);
 
-  
+  // Grava o treino concluído (uma única vez) no contexto global de treinos.
   function salvarTreino(seriesFeitas) {
     if (salvoRef.current || seriesFeitas < 1) return;
     salvoRef.current = true;
@@ -63,6 +65,7 @@ export default function ExecutarExercicio({ route, navigation }) {
       date: new Date().toISOString(),
     });
     setSalvo(true);
+    showSuccess('Treino registrado no histórico!');
   }
 
   function handleIniciar() {
@@ -85,7 +88,7 @@ export default function ExecutarExercicio({ route, navigation }) {
     if (concluidas > 0 && !terminou) setConcluidas(concluidas - 1);
   }
 
-  
+  // Encerrar antes de completar todas as séries: pergunta se salva o que foi feito.
   function handleEncerrar() {
     Alert.alert(
       'Encerrar exercício',

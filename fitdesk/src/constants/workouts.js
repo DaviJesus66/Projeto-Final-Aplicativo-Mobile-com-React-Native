@@ -1,4 +1,4 @@
-
+// Catálogo de grupos, músculos e ficha de exercícios sugerida (séries x repetições).
 export const GROUPS = [
   {
     id: 'superiores',
@@ -85,7 +85,7 @@ export const EXERCISES = {
   ],
 };
 
-
+// Lista usada no Modal de escolha do músculo (sem digitação livre).
 export const MUSCLE_OPTIONS = GROUPS.flatMap((g) =>
   g.muscles.map((m) => ({ value: m, label: m, hint: g.label }))
 );

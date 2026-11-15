@@ -1,5 +1,4 @@
 import React from 'react';
-import { ActivityIndicator, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { DarkTheme, DefaultTheme, NavigationContainer } from '@react-navigation/native';
@@ -8,6 +7,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useTheme } from '../store/theme-context';
 import { useWorkouts } from '../store/workouts-context';
 import { useMeasures } from '../store/measures-context';
+import Carregando from '../components/ui/Carregando';
 import EscolherFoco from '../screens/EscolherFoco';
 import FichaTreino from '../screens/FichaTreino';
 import ExecutarExercicio from '../screens/ExecutarExercicio';
@@ -20,7 +20,7 @@ import Configuracoes from '../screens/Configuracoes';
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
-
+// [ícone ativo, ícone inativo]
 const TAB_ICONS = {
   Treinar: ['barbell', 'barbell-outline'],
   Historico: ['list', 'list-outline'],
@@ -87,11 +87,7 @@ export default function Navegacao() {
   const { isLoaded: measuresLoaded } = useMeasures();
 
   if (!themeLoaded || !workoutsLoaded || !measuresLoaded) {
-    return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background }}>
-        <ActivityIndicator size="large" color={colors.primary} />
-      </View>
-    );
+    return <Carregando message="Carregando seus treinos..." />;
   }
 
   const base = isDark ? DarkTheme : DefaultTheme;
