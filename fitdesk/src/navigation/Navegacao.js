@@ -1,5 +1,4 @@
 import React from 'react';
-import { ActivityIndicator, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { DarkTheme, DefaultTheme, NavigationContainer } from '@react-navigation/native';
@@ -8,8 +7,10 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useTheme } from '../store/theme-context';
 import { useWorkouts } from '../store/workouts-context';
 import { useMeasures } from '../store/measures-context';
+import Carregando from '../components/ui/Carregando';
 import EscolherFoco from '../screens/EscolherFoco';
 import FichaTreino from '../screens/FichaTreino';
+import ExecutarExercicio from '../screens/ExecutarExercicio';
 import TodosTreinos from '../screens/TodosTreinos';
 import TreinosRecentes from '../screens/TreinosRecentes';
 import GerenciarTreino from '../screens/GerenciarTreino';
@@ -19,7 +20,7 @@ import Configuracoes from '../screens/Configuracoes';
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
-// [ícone ativo, ícone  inativo]
+// [ícone ativo, ícone inativo]
 const TAB_ICONS = {
   Treinar: ['barbell', 'barbell-outline'],
   Historico: ['list', 'list-outline'],
@@ -86,11 +87,7 @@ export default function Navegacao() {
   const { isLoaded: measuresLoaded } = useMeasures();
 
   if (!themeLoaded || !workoutsLoaded || !measuresLoaded) {
-    return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background }}>
-        <ActivityIndicator size="large" color={colors.primary} />
-      </View>
-    );
+    return <Carregando message="Carregando seus treinos..." />;
   }
 
   const base = isDark ? DarkTheme : DefaultTheme;
@@ -117,6 +114,7 @@ export default function Navegacao() {
       >
         <Stack.Screen name="Abas" component={Abas} options={{ headerShown: false }} />
         <Stack.Screen name="FichaTreino" component={FichaTreino} options={{ title: 'Ficha de treino' }} />
+        <Stack.Screen name="ExecutarExercicio" component={ExecutarExercicio} options={{ title: 'Exercício' }} />
         <Stack.Screen name="GerenciarTreino" component={GerenciarTreino} options={{ title: 'Novo treino' }} />
       </Stack.Navigator>
     </NavigationContainer>
