@@ -1,11 +1,11 @@
 import React from 'react';
-import { ActivityIndicator, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { DarkTheme, DefaultTheme, NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useTheme } from '../store/theme-context';
+import { useAuth } from '../store/auth-context';
 import { useWorkouts } from '../store/workouts-context';
 import { useMeasures } from '../store/measures-context';
 import EscolherFoco from '../screens/EscolherFoco';
@@ -15,6 +15,11 @@ import TreinosRecentes from '../screens/TreinosRecentes';
 import GerenciarTreino from '../screens/GerenciarTreino';
 import PesoAltura from '../screens/PesoAltura';
 import Configuracoes from '../screens/Configuracoes';
+import Login from '../screens/Login';
+import Cadastro from '../screens/Cadastro';
+import TelaLoading from '../components/ui/TelaLoading';
+import ErroBoundary from '../components/ui/ErroBoundary';
+import Logo from '../components/ui/Logo';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -55,7 +60,11 @@ function Abas() {
         ),
       })}
     >
-      <Tab.Screen name="Treinar" component={EscolherFoco} options={{ title: 'Treinar' }} />
+      <Tab.Screen
+        name="Treinar"
+        component={EscolherFoco}
+        options={{ title: 'Treinar', headerTitle: () => <Logo height={30} /> }}
+      />
       <Tab.Screen
         name="Historico"
         component={TodosTreinos}
@@ -82,15 +91,12 @@ function Abas() {
 
 export default function Navegacao() {
   const { colors, isDark, isLoaded: themeLoaded } = useTheme();
+  const { isLoggedIn, isLoaded: authLoaded } = useAuth();
   const { isLoaded: workoutsLoaded } = useWorkouts();
   const { isLoaded: measuresLoaded } = useMeasures();
 
-  if (!themeLoaded || !workoutsLoaded || !measuresLoaded) {
-    return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background }}>
-        <ActivityIndicator size="large" color={colors.primary} />
-      </View>
-    );
+  if (!themeLoaded || !authLoaded || !workoutsLoaded || !measuresLoaded) {
+    return <TelaLoading message="Carregando..." />;
   }
 
   const base = isDark ? DarkTheme : DefaultTheme;
@@ -105,20 +111,30 @@ export default function Navegacao() {
       border: colors.border,
     },
   };
-
   return (
-    <NavigationContainer theme={navTheme}>
-      <StatusBar style={isDark ? 'light' : 'dark'} />
-      <Stack.Navigator
-        screenOptions={{
-          headerStyle: { backgroundColor: colors.card },
-          headerTintColor: colors.text,
-        }}
-      >
-        <Stack.Screen name="Abas" component={Abas} options={{ headerShown: false }} />
-        <Stack.Screen name="FichaTreino" component={FichaTreino} options={{ title: 'Ficha de treino' }} />
-        <Stack.Screen name="GerenciarTreino" component={GerenciarTreino} options={{ title: 'Novo treino' }} />
-      </Stack.Navigator>
-    </NavigationContainer>
+    <ErroBoundary>
+      <NavigationContainer theme={navTheme}>
+        <StatusBar style={isDark ? 'light' : 'dark'} />
+        <Stack.Navigator
+          screenOptions={{
+            headerStyle: { backgroundColor: colors.card },
+            headerTintColor: colors.text,
+          }}
+        >
+          {isLoggedIn ? (
+            <>
+              <Stack.Screen name="Abas" component={Abas} options={{ headerShown: false }} />
+              <Stack.Screen name="FichaTreino" component={FichaTreino} options={{ title: 'Ficha de treino' }} />
+              <Stack.Screen name="GerenciarTreino" component={GerenciarTreino} options={{ title: 'Novo treino' }} />
+            </>
+          ) : (
+            <>
+              <Stack.Screen name="Login" component={Login} options={{ headerShown: false }} />
+              <Stack.Screen name="Cadastro" component={Cadastro} options={{ headerShown: false }} />
+            </>
+          )}
+        </Stack.Navigator>
+      </NavigationContainer>
+    </ErroBoundary>
   );
 }
