@@ -25,7 +25,7 @@ export default function ResumoSemana({ workouts }) {
         key: date.toDateString(),
         label: WEEKDAYS_SHORT[date.getDay()],
         count: dayWorkouts.length,
-        muscles: [...new Set(dayWorkouts.map((w) => w.muscle))],
+        muscles: [...new Set(dayWorkouts.map((w) => w.muscle).filter(Boolean))],
         isToday: i === 0,
       });
     }
@@ -107,18 +107,33 @@ export default function ResumoSemana({ workouts }) {
       {muscleGroups.map((group) => (
         <View key={group.id} style={styles.groupRow}>
           <View style={styles.groupInfo}>
-            <Ionicons
-              name={group.icon}
-              size={20}
-              color={colors.primary}
-            />
-            <Text style={{ color: colors.text, flex: 1, marginLeft: 8 }}>
+            <Ionicons name={group.icon} size={20} color={colors.primary} />
+
+            <Text style={[styles.groupLabel, { color: colors.text }]}>
               {group.label}
+            </Text>
+
+            <Text style={[styles.groupCount, { color: colors.primary }]}>
+              {group.count}
             </Text>
           </View>
 
-          <Text style={[styles.groupCount, { color: colors.primary }]}>
-            {group.count} treinos
+          <View style={[styles.progressTrack, { backgroundColor: colors.chip }]}>
+            <View
+              style={[
+                styles.progressFill,
+                {
+                  backgroundColor: colors.primary,
+                  width: `${totalWeek > 0 ? (group.count / totalWeek) * 100 : 0}%`,
+                },
+              ]}
+            />
+          </View>
+
+          <Text style={[styles.progressCaption, { color: colors.textMuted }]}>
+            {totalWeek > 0
+              ? `${Math.round((group.count / totalWeek) * 100)}% dos treinos`
+              : 'Nenhum treino registrado'}
           </Text>
         </View>
       ))}
@@ -130,11 +145,14 @@ export default function ResumoSemana({ workouts }) {
           </Text>
 
           {trained.map((day) => (
-            <Text key={day.key} style={{ color: colors.textMuted, marginTop: 5 }}>
+            <Text
+              key={day.key}
+              style={[styles.muscleText, { color: colors.textMuted }]}
+            >
               <Text style={{ color: colors.text, fontWeight: '700' }}>
-                {day.label}:
+                {day.label}:{' '}
               </Text>
-              {day.muscles.join(', ')}
+              {day.muscles.join(', ') || 'Não informado'}
             </Text>
           ))}
         </View>
@@ -187,9 +205,6 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   groupRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     paddingVertical: 10,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: '#cccccc',
@@ -197,12 +212,32 @@ const styles = StyleSheet.create({
   groupInfo: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  groupLabel: {
     flex: 1,
+    marginLeft: 8,
   },
   groupCount: {
     fontWeight: '700',
   },
+  progressTrack: {
+    height: 8,
+    borderRadius: 4,
+    overflow: 'hidden',
+    marginTop: 8,
+  },
+  progressFill: {
+    height: 8,
+    borderRadius: 4,
+  },
+  progressCaption: {
+    fontSize: 11,
+    marginTop: 4,
+  },
   details: {
     marginTop: 4,
+  },
+  muscleText: {
+    marginTop: 5,
   },
 });
