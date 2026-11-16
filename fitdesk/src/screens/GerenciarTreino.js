@@ -1,5 +1,5 @@
 import React, { useEffect, useLayoutEffect, useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as Haptics from 'expo-haptics';
@@ -10,6 +10,41 @@ import SeletorModal from '../components/ui/SeletorModal';
 import Botao from '../components/ui/Botao';
 import { MUSCLE_OPTIONS, groupOfMuscle } from '../constants/workouts';
 import { formatDate, isFuture } from '../utils/date';
+import { confirmar } from '../utils/dialogo';
+
+const pad = (n) => String(n).padStart(2, '0');
+const toInputValue = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
+// Na web o DateTimePicker nativo não existe; usamos o seletor de data do navegador.
+function CampoDataWeb({ label, value, error, onChange, colors }) {
+  return (
+    <View style={{ marginBottom: 16 }}>
+      <Text style={{ color: colors.text, fontSize: 14, fontWeight: '700', marginBottom: 6 }}>{label}</Text>
+      {React.createElement('input', {
+        type: 'date',
+        value: toInputValue(value),
+        max: toInputValue(new Date()),
+        onChange: (e) => {
+          const v = e.target.value;
+          if (!v) return;
+          const [y, m, d] = v.split('-').map(Number);
+          const now = new Date();
+          onChange(new Date(y, m - 1, d, now.getHours(), now.getMinutes()));
+        },
+        style: {
+          padding: 12,
+          fontSize: 16,
+          borderRadius: 12,
+          border: `1.5px solid ${error ? colors.error : colors.border}`,
+          backgroundColor: colors.inputBg,
+          color: colors.text,
+          fontFamily: 'inherit',
+        },
+      })}
+      {error ? <Text style={{ color: colors.error, fontSize: 13, marginTop: 4 }}>{error}</Text> : null}
+    </View>
+  );
+}
 
 // Regras: exercício com no mínimo 3 caracteres, séries e repetições > 0,
 // data não futura e músculo obrigatório.
@@ -73,17 +108,16 @@ export default function GerenciarTreino({ route, navigation }) {
   }
 
   function confirmDelete() {
-    Alert.alert('Excluir treino', 'Tem certeza que deseja excluir este treino?', [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Excluir',
-        style: 'destructive',
-        onPress: () => {
-          deleteWorkout(workoutId);
-          navigation.goBack();
-        },
+    confirmar({
+      title: 'Excluir treino',
+      message: 'Tem certeza que deseja excluir este treino?',
+      confirmText: 'Excluir',
+      destructive: true,
+      onConfirm: () => {
+        deleteWorkout(workoutId);
+        navigation.goBack();
       },
-    ]);
+    });
   }
 
   useLayoutEffect(() => {
@@ -195,6 +229,14 @@ export default function GerenciarTreino({ route, navigation }) {
             </View>
             {errors.date ? <Text style={{ color: colors.error, fontSize: 13, marginTop: 4 }}>{errors.date}</Text> : null}
           </View>
+        ) : Platform.OS === 'web' ? (
+          <CampoDataWeb
+            label="Data"
+            value={form.date}
+            error={errors.date}
+            colors={colors}
+            onChange={(selected) => handleChange('date', selected)}
+          />
         ) : (
           <>
             <CampoSeletor

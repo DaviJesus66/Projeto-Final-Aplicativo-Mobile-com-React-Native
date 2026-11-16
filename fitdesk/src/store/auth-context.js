@@ -1,27 +1,54 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import {
+  createUserWithEmailAndPassword,
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  signOut,
+  updateProfile,
+} from 'firebase/auth';
+import { auth } from '../services/firebase';
 
-// ATENÇÃO: este login é uma SIMULAÇÃO local.
-// As contas ficam salvas só neste aparelho (AsyncStorage), sem servidor.
-// Em um app real, use o Firebase Authentication e nunca guarde senha em texto puro.
-const USERS_KEY = '@auth_users';
-const SESSION_KEY = '@auth_session';
-
+// Autenticação real com Firebase Authentication (e-mail e senha).
+// A sessão é mantida pelo próprio Firebase (AsyncStorage no celular), e o uid
+// da conta é a pasta onde ficam os dados da pessoa no Firestore: users/{uid}/...
 const AuthContext = createContext(null);
 
-const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const normalizeEmail = (email) => String(email || '').trim().toLowerCase();
-const makeId = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
-const publicUser = (u) => ({ id: u.id, name: u.name, email: u.email });
 
-async function readUsers() {
-  try {
-    const raw = await AsyncStorage.getItem(USERS_KEY);
-    const list = raw ? JSON.parse(raw) : [];
-    return Array.isArray(list) ? list : [];
-  } catch (error) {
-    console.warn('Falha ao ler as contas salvas:', error);
-    return [];
+function publicUser(fbUser, name) {
+  const email = fbUser.email || '';
+  return {
+    id: fbUser.uid,
+    name: name || fbUser.displayName || email.split('@')[0] || 'Usuário',
+    email,
+  };
+}
+
+// Traduz o código de erro do Firebase para uma mensagem em português.
+function mensagemDeErro(error, acao) {
+  switch (error && error.code) {
+    case 'auth/email-already-in-use':
+      return 'Já existe uma conta com esse e-mail.';
+    case 'auth/invalid-email':
+      return 'Digite um e-mail válido.';
+    case 'auth/weak-password':
+      return 'A senha é fraca. Use pelo menos 6 caracteres.';
+    case 'auth/user-not-found':
+    case 'auth/wrong-password':
+    case 'auth/invalid-credential':
+      return 'E-mail ou senha incorretos.';
+    case 'auth/user-disabled':
+      return 'Esta conta foi desativada.';
+    case 'auth/too-many-requests':
+      return 'Muitas tentativas. Aguarde um pouco e tente de novo.';
+    case 'auth/network-request-failed':
+      return 'Sem conexão com a internet. Verifique a rede e tente de novo.';
+    case 'auth/operation-not-allowed':
+      return 'O login por e-mail e senha não está ativado no Firebase (Authentication > Sign-in method).';
+    default:
+      return acao === 'cadastro'
+        ? 'Não foi possível criar a conta. Tente novamente.'
+        : 'Não foi possível entrar. Tente novamente.';
   }
 }
 
@@ -29,77 +56,60 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // Ao abrir o app, recupera a sessão salva (se a pessoa já estava logada).
+  // Acompanha a sessão: recupera quem já estava logada ao abrir o app e reage a login/logout.
   useEffect(() => {
-    let active = true;
-    async function load() {
-      try {
-        const saved = await AsyncStorage.getItem(SESSION_KEY);
-        if (saved && active) {
-          const parsed = JSON.parse(saved);
-          if (parsed && parsed.id) setUser(parsed);
-        }
-      } catch (error) {
-        console.warn('Falha ao ler a sessão salva:', error);
-      } finally {
-        if (active) setIsLoaded(true);
+    const cancelar = onAuthStateChanged(
+      auth,
+      (fbUser) => {
+        setUser(fbUser ? publicUser(fbUser) : null);
+        setIsLoaded(true);
+      },
+      (error) => {
+        console.warn('Falha ao ler a sessão:', error);
+        setUser(null);
+        setIsLoaded(true);
       }
-    }
-    load();
-    return () => {
-      active = false;
-    };
+    );
+    return cancelar;
   }, []);
 
   // Cria a conta e já deixa a pessoa logada. Retorna { ok: true } ou { ok: false, error }.
   const register = useCallback(async ({ name, email, password }) => {
     try {
-      await wait(600);
-      const users = await readUsers();
-      const cleanEmail = normalizeEmail(email);
-      if (users.some((u) => u.email === cleanEmail)) {
-        return { ok: false, error: 'Já existe uma conta com esse e-mail.' };
+      const cred = await createUserWithEmailAndPassword(auth, normalizeEmail(email), password);
+      const cleanName = String(name || '').trim();
+      try {
+        await updateProfile(cred.user, { displayName: cleanName });
+      } catch (error) {
+        console.warn('Conta criada, mas não foi possível salvar o nome:', error);
       }
-      const newUser = { id: makeId(), name: String(name).trim(), email: cleanEmail, password };
-      await AsyncStorage.setItem(USERS_KEY, JSON.stringify([...users, newUser]));
-      const session = publicUser(newUser);
-      await AsyncStorage.setItem(SESSION_KEY, JSON.stringify(session));
+      const session = publicUser(cred.user, cleanName);
       setUser(session);
       return { ok: true, user: session };
     } catch (error) {
       console.warn('Falha ao criar a conta:', error);
-      return { ok: false, error: 'Não foi possível criar a conta. Tente novamente.' };
+      return { ok: false, error: mensagemDeErro(error, 'cadastro') };
     }
   }, []);
 
   // Entra com e-mail e senha. Retorna { ok: true } ou { ok: false, error }.
   const login = useCallback(async ({ email, password }) => {
     try {
-      await wait(600);
-      const users = await readUsers();
-      const cleanEmail = normalizeEmail(email);
-      const found = users.find((u) => u.email === cleanEmail && u.password === password);
-      if (!found) {
-        return { ok: false, error: 'E-mail ou senha incorretos.' };
-      }
-      const session = publicUser(found);
-      await AsyncStorage.setItem(SESSION_KEY, JSON.stringify(session));
-      setUser(session);
-      return { ok: true, user: session };
+      const cred = await signInWithEmailAndPassword(auth, normalizeEmail(email), password);
+      return { ok: true, user: publicUser(cred.user) };
     } catch (error) {
       console.warn('Falha ao entrar:', error);
-      return { ok: false, error: 'Não foi possível entrar. Tente novamente.' };
+      return { ok: false, error: mensagemDeErro(error, 'login') };
     }
   }, []);
 
-  // Sai da conta (as contas cadastradas continuam salvas no aparelho).
+  // Sai da conta. Os dados continuam salvos no Firestore para o próximo login.
   const logout = useCallback(async () => {
     try {
-      await AsyncStorage.removeItem(SESSION_KEY);
+      await signOut(auth);
     } catch (error) {
       console.warn('Falha ao sair:', error);
     }
-    setUser(null);
   }, []);
 
   const value = useMemo(

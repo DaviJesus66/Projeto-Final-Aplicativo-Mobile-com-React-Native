@@ -1,5 +1,5 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '../store/theme-context';
@@ -7,6 +7,7 @@ import { useWorkouts } from '../store/workouts-context';
 import { useFeedback } from '../store/feedback-context';
 import Botao from '../components/ui/Botao';
 import { cardShadow, radius } from '../constants/theme';
+import { confirmar } from '../utils/dialogo';
 
 // Haptics pode não existir em alguns aparelhos/emuladores, por isso nunca quebra o fluxo.
 async function vibrar(tipo) {
@@ -90,20 +91,16 @@ export default function ExecutarExercicio({ route, navigation }) {
 
   // Encerrar antes de completar todas as séries: pergunta se salva o que foi feito.
   function handleEncerrar() {
-    Alert.alert(
-      'Encerrar exercício',
-      `Você fez ${concluidas} de ${sets} séries. Deseja salvar mesmo assim?`,
-      [
-        { text: 'Continuar treinando', style: 'cancel' },
-        {
-          text: 'Salvar e sair',
-          onPress: () => {
-            salvarTreino(concluidas);
-            navigation.goBack();
-          },
-        },
-      ]
-    );
+    confirmar({
+      title: 'Encerrar exercício',
+      message: `Você fez ${concluidas} de ${sets} séries. Deseja salvar mesmo assim?`,
+      confirmText: 'Salvar e sair',
+      cancelText: 'Continuar treinando',
+      onConfirm: () => {
+        salvarTreino(concluidas);
+        navigation.goBack();
+      },
+    });
   }
 
   return (

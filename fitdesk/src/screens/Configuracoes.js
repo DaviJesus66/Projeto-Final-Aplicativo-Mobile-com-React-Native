@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Alert, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useTheme } from '../store/theme-context';
@@ -10,6 +10,7 @@ import Chip from '../components/ui/Chip';
 import Botao from '../components/ui/Botao';
 import Cartao from '../components/ui/Cartao';
 import { radius } from '../constants/theme';
+import { confirmar } from '../utils/dialogo';
 import {
   LEMBRETE_PADRAO,
   alterarHorario,
@@ -40,36 +41,26 @@ export default function Configuracoes() {
   }, []);
 
   function confirmClear() {
-    Alert.alert(
-      'Limpar treinos',
-      'Todos os treinos registrados serão apagados. Deseja continuar?',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Limpar tudo',
-          style: 'destructive',
-          onPress: () => {
-            clearWorkouts();
-            showSuccess('Todos os treinos foram apagados.');
-          },
-        },
-      ]
-    );
+    confirmar({
+      title: 'Limpar treinos',
+      message: 'Todos os treinos registrados serão apagados. Deseja continuar?',
+      confirmText: 'Limpar tudo',
+      destructive: true,
+      onConfirm: () => {
+        clearWorkouts();
+        showSuccess('Todos os treinos foram apagados.');
+      },
+    });
   }
 
   function confirmLogout() {
-    Alert.alert(
-      'Sair da conta',
-      'Tem certeza que deseja sair do aplicativo?',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Sair',
-          style: 'destructive',
-          onPress: logout,
-        },
-      ]
-    );
+    confirmar({
+      title: 'Sair da conta',
+      message: 'Tem certeza que deseja sair do aplicativo?',
+      confirmText: 'Sair',
+      destructive: true,
+      onConfirm: logout,
+    });
   }
 
   async function handleToggle(ligar) {
@@ -206,7 +197,7 @@ export default function Configuracoes() {
           {workouts.length === 1
             ? 'treino registrado'
             : 'treinos registrados'}{' '}
-          neste aparelho.
+          na sua conta.
         </Text>
 
         <Botao

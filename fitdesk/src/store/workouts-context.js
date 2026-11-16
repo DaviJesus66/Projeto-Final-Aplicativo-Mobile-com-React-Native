@@ -1,6 +1,8 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useState } from 'react';
 import { newId } from '../utils/date';
 import { atualizarDoc, excluirDoc, excluirVarios, observarColecao, salvarDoc } from '../services/repositorio';
+import { useAuth } from './auth-context';
+import { useFeedback } from './feedback-context';
 
 const COLECAO = 'workouts';
 
@@ -26,12 +28,23 @@ export function workoutsReducer(state, action) {
 const WorkoutsContext = createContext(null);
 
 export function WorkoutsContextProvider({ children }) {
+  const { user } = useAuth();
+  const { showError } = useFeedback();
+  const uid = user ? user.id : null;
+
   const [workouts, dispatch] = useReducer(workoutsReducer, []);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // Fonte da verdade: o Firestore. Cada mudança na coleção (inclusive as feitas
-  // por este próprio app) chega aqui e vira um SET no reducer.
+  // Fonte da verdade: o Firestore (users/{uid}/workouts). Cada mudança na coleção
+  // (inclusive as feitas por este próprio app) chega aqui e vira um SET no reducer.
+  // Ao trocar de conta a escuta é refeita; sem login não há nada para carregar.
   useEffect(() => {
+    if (!uid) {
+      dispatch({ type: 'SET', payload: [] });
+      setIsLoaded(true);
+      return undefined;
+    }
+    setIsLoaded(false);
     const cancelar = observarColecao(
       COLECAO,
       (lista) => {
@@ -40,32 +53,47 @@ export function WorkoutsContextProvider({ children }) {
       },
       (error) => {
         console.warn('Falha ao ler os treinos do Firestore:', error);
+        showError('Não foi possível carregar os treinos. Verifique a conexão e as regras do Firestore.');
         setIsLoaded(true);
       }
     );
     return cancelar;
-  }, []);
+  }, [uid, showError]);
 
-  const addWorkout = useCallback((data) => {
-    salvarDoc(COLECAO, newId(), data).catch((error) =>
-      console.warn('Falha ao salvar o treino:', error)
-    );
-  }, []);
-  const updateWorkout = useCallback((id, data) => {
-    atualizarDoc(COLECAO, id, data).catch((error) =>
-      console.warn('Falha ao atualizar o treino:', error)
-    );
-  }, []);
-  const deleteWorkout = useCallback((id) => {
-    excluirDoc(COLECAO, id).catch((error) =>
-      console.warn('Falha ao excluir o treino:', error)
-    );
-  }, []);
+  // Sem await nas telas: com o Firestore offline a promise só resolve ao reconectar.
+  const addWorkout = useCallback(
+    (data) => {
+      salvarDoc(COLECAO, newId(), data).catch((error) => {
+        console.warn('Falha ao salvar o treino:', error);
+        showError('Não foi possível salvar o treino.');
+      });
+    },
+    [showError]
+  );
+  const updateWorkout = useCallback(
+    (id, data) => {
+      atualizarDoc(COLECAO, id, data).catch((error) => {
+        console.warn('Falha ao atualizar o treino:', error);
+        showError('Não foi possível atualizar o treino.');
+      });
+    },
+    [showError]
+  );
+  const deleteWorkout = useCallback(
+    (id) => {
+      excluirDoc(COLECAO, id).catch((error) => {
+        console.warn('Falha ao excluir o treino:', error);
+        showError('Não foi possível excluir o treino.');
+      });
+    },
+    [showError]
+  );
   const clearWorkouts = useCallback(() => {
-    excluirVarios(COLECAO, workouts.map((w) => w.id)).catch((error) =>
-      console.warn('Falha ao limpar os treinos:', error)
-    );
-  }, [workouts]);
+    excluirVarios(COLECAO, workouts.map((w) => w.id)).catch((error) => {
+      console.warn('Falha ao limpar os treinos:', error);
+      showError('Não foi possível limpar os treinos.');
+    });
+  }, [workouts, showError]);
 
   // Sempre do mais recente para o mais antigo.
   const sorted = useMemo(

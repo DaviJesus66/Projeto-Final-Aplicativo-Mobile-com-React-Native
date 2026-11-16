@@ -30,7 +30,8 @@ yarn-error.*
 .DS_Store
 *.pem
 
-# local env files
+# local env files (chaves do Firebase: use o .env.example como modelo)
+.env
 .env*.local
 
 # typescript

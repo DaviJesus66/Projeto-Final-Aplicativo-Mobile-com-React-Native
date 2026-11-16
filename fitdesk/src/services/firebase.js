@@ -1,13 +1,7 @@
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getApp, getApps, initializeApp } from 'firebase/app';
-import {
-  getAuth,
-  getReactNativePersistence,
-  initializeAuth,
-  onAuthStateChanged,
-  signInAnonymously,
-} from 'firebase/auth';
+import { getAuth, getReactNativePersistence, initializeAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
 // As chaves vêm do arquivo .env (veja .env.example). No Expo, só variáveis
@@ -21,11 +15,17 @@ const firebaseConfig = {
   appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
 };
 
+if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
+  console.error(
+    'Firebase sem configuração: copie .env.example para .env, preencha as chaves e reinicie com "npx expo start -c".'
+  );
+}
+
 // Evita inicializar duas vezes (Fast Refresh recarrega os módulos).
 const jaInicializado = getApps().length > 0;
 const app = jaInicializado ? getApp() : initializeApp(firebaseConfig);
 
-// No celular, a sessão é guardada no AsyncStorage para o usuário continuar o mesmo
+// No celular, a sessão é guardada no AsyncStorage para a pessoa continuar logada
 // depois de fechar o app. Na web o Firebase já cuida disso sozinho.
 export const auth =
   jaInicializado || Platform.OS === 'web'
@@ -34,26 +34,9 @@ export const auth =
 
 export const db = getFirestore(app);
 
-// Login anônimo: cada aparelho ganha um uid próprio e seus dados ficam em
-// users/{uid}/..., sem precisar de tela de cadastro. Devolve o uid (a promessa é compartilhada).
-let promessaUsuario = null;
-
-export function garantirUsuario() {
-  if (!promessaUsuario) {
-    promessaUsuario = new Promise((resolve, reject) => {
-      const cancelar = onAuthStateChanged(auth, (user) => {
-        if (user) {
-          cancelar();
-          resolve(user.uid);
-        } else {
-          signInAnonymously(auth).catch((error) => {
-            cancelar();
-            promessaUsuario = null; // permite tentar de novo depois
-            reject(error);
-          });
-        }
-      });
-    });
-  }
-  return promessaUsuario;
+// uid de quem está logada agora. Os dados de cada pessoa ficam em users/{uid}/...
+export function uidAtual() {
+  const user = auth.currentUser;
+  if (!user) throw new Error('Nenhum usuário autenticado.');
+  return user.uid;
 }

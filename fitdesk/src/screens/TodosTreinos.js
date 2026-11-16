@@ -22,7 +22,9 @@ export default function TodosTreinos() {
     return workouts.filter((w) => {
       const matchGroup = !groupFilter || w.group === groupFilter;
       const matchText =
-        !term || w.exercise.toLowerCase().includes(term) || w.muscle.toLowerCase().includes(term);
+        !term ||
+        String(w.exercise || '').toLowerCase().includes(term) ||
+        String(w.muscle || '').toLowerCase().includes(term);
       return matchGroup && matchText;
     });
   }, [workouts, debouncedSearch, groupFilter]);

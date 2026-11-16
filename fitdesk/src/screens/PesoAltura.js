@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useMeasures } from '../store/measures-context';
 import { useTheme } from '../store/theme-context';
+import { useFeedback } from '../store/feedback-context';
 import { CampoTexto } from '../components/ui/Campo';
 import Botao from '../components/ui/Botao';
 import { cardShadow, radius } from '../constants/theme';
 import { formatDate } from '../utils/date';
+import { confirmar } from '../utils/dialogo';
 import { calcImc, monthlyVariation } from '../utils/measures';
 
 function validate(values) {
@@ -22,6 +24,7 @@ function validate(values) {
 export default function PesoAltura() {
   const { colors } = useTheme();
   const { measures, addMeasure, deleteMeasure } = useMeasures();
+  const { showSuccess } = useFeedback();
   const last = measures[0];
 
   const [form, setForm] = useState({ weight: '', height: last ? String(last.height) : '' });
@@ -61,14 +64,17 @@ export default function PesoAltura() {
     } catch (e) {
       // ignora
     }
-    Alert.alert('Medida salva', 'Seu peso e sua altura foram atualizados.');
+    showSuccess('Medida salva! Peso e altura atualizados.');
   }
 
   function confirmDelete(id) {
-    Alert.alert('Excluir medida', 'Deseja excluir este registro?', [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Excluir', style: 'destructive', onPress: () => deleteMeasure(id) },
-    ]);
+    confirmar({
+      title: 'Excluir medida',
+      message: 'Deseja excluir este registro?',
+      confirmText: 'Excluir',
+      destructive: true,
+      onConfirm: () => deleteMeasure(id),
+    });
   }
 
   const variation = monthlyVariation(measures);
