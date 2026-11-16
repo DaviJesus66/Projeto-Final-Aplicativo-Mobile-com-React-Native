@@ -1,8 +1,8 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useState } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { newId } from '../utils/date';
+import { excluirDoc, observarColecao, salvarDoc } from '../services/repositorio';
 
-const STORAGE_KEY = '@measures';
+const COLECAO = 'measures';
 
 // Cada medição: { id, weight (kg), height (cm), date }
 export function measuresReducer(state, action) {
@@ -25,43 +25,29 @@ export function MeasuresContextProvider({ children }) {
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
-    let active = true;
-    async function load() {
-      try {
-        const raw = await AsyncStorage.getItem(STORAGE_KEY);
-        if (raw && active) {
-          const saved = JSON.parse(raw);
-          if (Array.isArray(saved)) dispatch({ type: 'SET', payload: saved });
-        }
-      } catch (error) {
-        console.warn('Falha ao ler as medidas salvas:', error);
-      } finally {
-        if (active) setIsLoaded(true);
+    const cancelar = observarColecao(
+      COLECAO,
+      (lista) => {
+        dispatch({ type: 'SET', payload: lista });
+        setIsLoaded(true);
+      },
+      (error) => {
+        console.warn('Falha ao ler as medidas do Firestore:', error);
+        setIsLoaded(true);
       }
-    }
-    load();
-    return () => {
-      active = false;
-    };
+    );
+    return cancelar;
   }, []);
-
-  useEffect(() => {
-    if (!isLoaded) return;
-    async function save() {
-      try {
-        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(measures));
-      } catch (error) {
-        console.warn('Falha ao salvar as medidas:', error);
-      }
-    }
-    save();
-  }, [measures, isLoaded]);
 
   const addMeasure = useCallback((data) => {
-    dispatch({ type: 'ADD', payload: { id: newId(), date: new Date().toISOString(), ...data } });
+    salvarDoc(COLECAO, newId(), { date: new Date().toISOString(), ...data }).catch((error) =>
+      console.warn('Falha ao salvar a medida:', error)
+    );
   }, []);
   const deleteMeasure = useCallback((id) => {
-    dispatch({ type: 'DELETE', payload: id });
+    excluirDoc(COLECAO, id).catch((error) =>
+      console.warn('Falha ao excluir a medida:', error)
+    );
   }, []);
 
   const sorted = useMemo(

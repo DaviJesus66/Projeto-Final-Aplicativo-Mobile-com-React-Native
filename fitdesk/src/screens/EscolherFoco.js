@@ -10,7 +10,6 @@ export default function EscolherFoco({ navigation }) {
   const [groupId, setGroupId] = useState(null);
   const group = GROUPS.find((g) => g.id === groupId);
 
-
   return (
     <ScrollView style={{ backgroundColor: colors.background }} contentContainerStyle={styles.content}>
       <Text style={[styles.heading, { color: colors.text }]}>Qual é o foco do treino de hoje?</Text>
@@ -91,4 +90,3 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
   },
 });
-

@@ -1,12 +1,23 @@
-
-import React from 'react';
-import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Alert, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { useTheme } from '../store/theme-context';
 import { useAuth } from '../store/auth-context';
 import { useWorkouts } from '../store/workouts-context';
+import { useFeedback } from '../store/feedback-context';
 import Chip from '../components/ui/Chip';
 import Botao from '../components/ui/Botao';
 import Cartao from '../components/ui/Cartao';
+import { radius } from '../constants/theme';
+import {
+  LEMBRETE_PADRAO,
+  alterarHorario,
+  ativarLembrete,
+  carregarLembrete,
+  desativarLembrete,
+  formatarHorario,
+} from '../services/lembrete';
 
 const MODES = [
   { value: 'system', label: 'Automático' },
@@ -18,6 +29,15 @@ export default function Configuracoes() {
   const { colors, mode, setMode } = useTheme();
   const { workouts, clearWorkouts } = useWorkouts();
   const { user, logout } = useAuth();
+  const { showSuccess, showError, showInfo } = useFeedback();
+
+  const [lembrete, setLembrete] = useState(LEMBRETE_PADRAO);
+  const [ocupado, setOcupado] = useState(false);
+  const [mostrarPicker, setMostrarPicker] = useState(false);
+
+  useEffect(() => {
+    carregarLembrete().then(setLembrete);
+  }, []);
 
   function confirmClear() {
     Alert.alert(
@@ -28,7 +48,10 @@ export default function Configuracoes() {
         {
           text: 'Limpar tudo',
           style: 'destructive',
-          onPress: clearWorkouts,
+          onPress: () => {
+            clearWorkouts();
+            showSuccess('Todos os treinos foram apagados.');
+          },
         },
       ]
     );
@@ -48,6 +71,45 @@ export default function Configuracoes() {
       ]
     );
   }
+
+  async function handleToggle(ligar) {
+    setOcupado(true);
+    try {
+      if (ligar) {
+        const resultado = await ativarLembrete(lembrete.hour, lembrete.minute);
+        if (!resultado.ok) {
+          showError('Permita as notificações nas configurações do aparelho.');
+          return;
+        }
+        setLembrete(resultado.config);
+        showSuccess(`Lembrete diário ativado para ${formatarHorario(lembrete.hour, lembrete.minute)}.`);
+      } else {
+        setLembrete(await desativarLembrete());
+        showInfo('Lembrete desativado.');
+      }
+    } catch (e) {
+      showError('Não foi possível configurar o lembrete neste dispositivo.');
+    } finally {
+      setOcupado(false);
+    }
+  }
+
+  async function handleHorario(event, selecionado) {
+    if (Platform.OS === 'android') setMostrarPicker(false);
+    if (event.type === 'dismissed' || !selecionado) return;
+    const hour = selecionado.getHours();
+    const minute = selecionado.getMinutes();
+    try {
+      const config = await alterarHorario(hour, minute);
+      setLembrete(config);
+      if (config.enabled) showSuccess(`Lembrete reagendado para ${formatarHorario(hour, minute)}.`);
+    } catch (e) {
+      showError('Não foi possível alterar o horário do lembrete.');
+    }
+  }
+
+  const horaPicker = new Date();
+  horaPicker.setHours(lembrete.hour, lembrete.minute, 0, 0);
 
   return (
     <ScrollView
@@ -98,6 +160,41 @@ export default function Configuracoes() {
         </View>
       </Cartao>
 
+      {/* LEMBRETE DE TREINO */}
+      <Cartao style={styles.card}>
+        <View style={styles.linha}>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.title, { color: colors.text }]}>Lembrete de treino</Text>
+            <Text style={{ color: colors.textMuted }}>Uma notificação todos os dias no horário escolhido.</Text>
+          </View>
+          <Switch
+            value={lembrete.enabled}
+            onValueChange={handleToggle}
+            disabled={ocupado}
+            trackColor={{ false: colors.border, true: colors.primary }}
+          />
+        </View>
+
+        <Pressable
+          onPress={() => Platform.OS === 'android' && setMostrarPicker(true)}
+          style={[styles.horario, { borderColor: colors.border, backgroundColor: colors.inputBg }]}
+        >
+          <Ionicons name="time-outline" size={20} color={colors.textMuted} />
+          <Text style={{ color: colors.text, fontSize: 16, flex: 1, marginLeft: 8 }}>Horário</Text>
+          {Platform.OS === 'ios' ? (
+            <DateTimePicker value={horaPicker} mode="time" display="compact" is24Hour onChange={handleHorario} />
+          ) : (
+            <Text style={{ color: colors.primary, fontSize: 16, fontWeight: '700' }}>
+              {formatarHorario(lembrete.hour, lembrete.minute)}
+            </Text>
+          )}
+        </Pressable>
+
+        {mostrarPicker && Platform.OS === 'android' ? (
+          <DateTimePicker value={horaPicker} mode="time" is24Hour onChange={handleHorario} />
+        ) : null}
+      </Cartao>
+
       {/* DADOS */}
       <Cartao style={styles.card}>
         <Text style={[styles.title, { color: colors.text }]}>
@@ -145,5 +242,19 @@ const styles = StyleSheet.create({
   chips: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+  },
+  linha: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 14,
+  },
+  horario: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderRadius: radius.md,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
   },
 });
