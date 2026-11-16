@@ -3,11 +3,13 @@ import { Alert, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, View 
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useTheme } from '../store/theme-context';
+import { useAuth } from '../store/auth-context';
 import { useWorkouts } from '../store/workouts-context';
 import { useFeedback } from '../store/feedback-context';
 import Chip from '../components/ui/Chip';
 import Botao from '../components/ui/Botao';
-import { cardShadow, radius } from '../constants/theme';
+import Cartao from '../components/ui/Cartao';
+import { radius } from '../constants/theme';
 import {
   LEMBRETE_PADRAO,
   alterarHorario,
@@ -26,6 +28,7 @@ const MODES = [
 export default function Configuracoes() {
   const { colors, mode, setMode } = useTheme();
   const { workouts, clearWorkouts } = useWorkouts();
+  const { user, logout } = useAuth();
   const { showSuccess, showError, showInfo } = useFeedback();
 
   const [lembrete, setLembrete] = useState(LEMBRETE_PADRAO);
@@ -37,17 +40,36 @@ export default function Configuracoes() {
   }, []);
 
   function confirmClear() {
-    Alert.alert('Limpar treinos', 'Todos os treinos registrados serão apagados. Deseja continuar?', [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Limpar tudo',
-        style: 'destructive',
-        onPress: () => {
-          clearWorkouts();
-          showSuccess('Todos os treinos foram apagados.');
+    Alert.alert(
+      'Limpar treinos',
+      'Todos os treinos registrados serão apagados. Deseja continuar?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Limpar tudo',
+          style: 'destructive',
+          onPress: () => {
+            clearWorkouts();
+            showSuccess('Todos os treinos foram apagados.');
+          },
         },
-      },
-    ]);
+      ]
+    );
+  }
+
+  function confirmLogout() {
+    Alert.alert(
+      'Sair da conta',
+      'Tem certeza que deseja sair do aplicativo?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Sair',
+          style: 'destructive',
+          onPress: logout,
+        },
+      ]
+    );
   }
 
   async function handleToggle(ligar) {
@@ -90,20 +112,56 @@ export default function Configuracoes() {
   horaPicker.setHours(lembrete.hour, lembrete.minute, 0, 0);
 
   return (
-    <ScrollView style={{ backgroundColor: colors.background }} contentContainerStyle={styles.content}>
-      <View style={[styles.card, cardShadow, { backgroundColor: colors.card }]}>
-        <Text style={[styles.title, { color: colors.text }]}>Tema do aplicativo</Text>
+    <ScrollView
+      style={{ backgroundColor: colors.background }}
+      contentContainerStyle={styles.content}
+    >
+      {/* MINHA CONTA */}
+      <Cartao style={styles.card}>
+        <Text style={[styles.title, { color: colors.text }]}>
+          Minha conta
+        </Text>
+
+        <Text style={[styles.welcome, { color: colors.primary }]}>
+          Bem-vindo, {user?.name || 'Usuário'}!
+        </Text>
+
+        <Text style={{ color: colors.textMuted, marginBottom: 16 }}>
+          {user?.email || 'E-mail não disponível'}
+        </Text>
+
+        <Botao
+          title="Sair da conta"
+          variant="danger"
+          icon="log-out-outline"
+          onPress={confirmLogout}
+        />
+      </Cartao>
+
+      {/* TEMA DO APLICATIVO */}
+      <Cartao style={styles.card}>
+        <Text style={[styles.title, { color: colors.text }]}>
+          Tema do aplicativo
+        </Text>
+
         <Text style={{ color: colors.textMuted, marginBottom: 12 }}>
           Automático acompanha o tema do seu aparelho.
         </Text>
+
         <View style={styles.chips}>
           {MODES.map((m) => (
-            <Chip key={m.value} label={m.label} selected={mode === m.value} onPress={() => setMode(m.value)} />
+            <Chip
+              key={m.value}
+              label={m.label}
+              selected={mode === m.value}
+              onPress={() => setMode(m.value)}
+            />
           ))}
         </View>
-      </View>
+      </Cartao>
 
-      <View style={[styles.card, cardShadow, { backgroundColor: colors.card }]}>
+      {/* LEMBRETE DE TREINO */}
+      <Cartao style={styles.card}>
         <View style={styles.linha}>
           <View style={{ flex: 1 }}>
             <Text style={[styles.title, { color: colors.text }]}>Lembrete de treino</Text>
@@ -135,25 +193,62 @@ export default function Configuracoes() {
         {mostrarPicker && Platform.OS === 'android' ? (
           <DateTimePicker value={horaPicker} mode="time" is24Hour onChange={handleHorario} />
         ) : null}
-      </View>
+      </Cartao>
 
-      <View style={[styles.card, cardShadow, { backgroundColor: colors.card }]}>
-        <Text style={[styles.title, { color: colors.text }]}>Dados</Text>
-        <Text style={{ color: colors.textMuted, marginBottom: 12 }}>
-          {workouts.length} {workouts.length === 1 ? 'treino registrado' : 'treinos registrados'} neste aparelho.
+      {/* DADOS */}
+      <Cartao style={styles.card}>
+        <Text style={[styles.title, { color: colors.text }]}>
+          Dados
         </Text>
-        <Botao title="Limpar todos os treinos" variant="danger" icon="trash-outline" onPress={confirmClear} disabled={workouts.length === 0} />
-      </View>
+
+        <Text style={{ color: colors.textMuted, marginBottom: 12 }}>
+          {workouts.length}{' '}
+          {workouts.length === 1
+            ? 'treino registrado'
+            : 'treinos registrados'}{' '}
+          neste aparelho.
+        </Text>
+
+        <Botao
+          title="Limpar todos os treinos"
+          variant="danger"
+          icon="trash-outline"
+          onPress={confirmClear}
+          disabled={workouts.length === 0}
+        />
+      </Cartao>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { padding: 16 },
-  card: { padding: 16, borderRadius: radius.lg, marginBottom: 16 },
-  title: { fontSize: 18, fontWeight: '800', marginBottom: 4 },
-  chips: { flexDirection: 'row', flexWrap: 'wrap' },
-  linha: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 14 },
+  content: {
+    padding: 16,
+  },
+  card: {
+    marginBottom: 16,
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: '800',
+    marginBottom: 4,
+  },
+  welcome: {
+    fontSize: 20,
+    fontWeight: '800',
+    marginTop: 10,
+    marginBottom: 6,
+  },
+  chips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  linha: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 14,
+  },
   horario: {
     flexDirection: 'row',
     alignItems: 'center',
