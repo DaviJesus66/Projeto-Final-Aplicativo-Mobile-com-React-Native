@@ -1,6 +1,8 @@
+
 import React from 'react';
 import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useTheme } from '../store/theme-context';
+import { useAuth } from '../store/auth-context';
 import { useWorkouts } from '../store/workouts-context';
 import Chip from '../components/ui/Chip';
 import Botao from '../components/ui/Botao';
@@ -15,42 +17,133 @@ const MODES = [
 export default function Configuracoes() {
   const { colors, mode, setMode } = useTheme();
   const { workouts, clearWorkouts } = useWorkouts();
+  const { user, logout } = useAuth();
 
   function confirmClear() {
-    Alert.alert('Limpar treinos', 'Todos os treinos registrados serão apagados. Deseja continuar?', [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Limpar tudo', style: 'destructive', onPress: clearWorkouts },
-    ]);
+    Alert.alert(
+      'Limpar treinos',
+      'Todos os treinos registrados serão apagados. Deseja continuar?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Limpar tudo',
+          style: 'destructive',
+          onPress: clearWorkouts,
+        },
+      ]
+    );
+  }
+
+  function confirmLogout() {
+    Alert.alert(
+      'Sair da conta',
+      'Tem certeza que deseja sair do aplicativo?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Sair',
+          style: 'destructive',
+          onPress: logout,
+        },
+      ]
+    );
   }
 
   return (
-    <ScrollView style={{ backgroundColor: colors.background }} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={{ backgroundColor: colors.background }}
+      contentContainerStyle={styles.content}
+    >
+      {/* MINHA CONTA */}
       <Cartao style={styles.card}>
-        <Text style={[styles.title, { color: colors.text }]}>Tema do aplicativo</Text>
+        <Text style={[styles.title, { color: colors.text }]}>
+          Minha conta
+        </Text>
+
+        <Text style={[styles.welcome, { color: colors.primary }]}>
+          Bem-vindo, {user?.name || 'Usuário'}!
+        </Text>
+
+        <Text style={{ color: colors.textMuted, marginBottom: 16 }}>
+          {user?.email || 'E-mail não disponível'}
+        </Text>
+
+        <Botao
+          title="Sair da conta"
+          variant="danger"
+          icon="log-out-outline"
+          onPress={confirmLogout}
+        />
+      </Cartao>
+
+      {/* TEMA DO APLICATIVO */}
+      <Cartao style={styles.card}>
+        <Text style={[styles.title, { color: colors.text }]}>
+          Tema do aplicativo
+        </Text>
+
         <Text style={{ color: colors.textMuted, marginBottom: 12 }}>
           Automático acompanha o tema do seu aparelho.
         </Text>
+
         <View style={styles.chips}>
           {MODES.map((m) => (
-            <Chip key={m.value} label={m.label} selected={mode === m.value} onPress={() => setMode(m.value)} />
+            <Chip
+              key={m.value}
+              label={m.label}
+              selected={mode === m.value}
+              onPress={() => setMode(m.value)}
+            />
           ))}
         </View>
       </Cartao>
 
+      {/* DADOS */}
       <Cartao style={styles.card}>
-        <Text style={[styles.title, { color: colors.text }]}>Dados</Text>
-        <Text style={{ color: colors.textMuted, marginBottom: 12 }}>
-          {workouts.length} {workouts.length === 1 ? 'treino registrado' : 'treinos registrados'} neste aparelho.
+        <Text style={[styles.title, { color: colors.text }]}>
+          Dados
         </Text>
-        <Botao title="Limpar todos os treinos" variant="danger" icon="trash-outline" onPress={confirmClear} disabled={workouts.length === 0} />
+
+        <Text style={{ color: colors.textMuted, marginBottom: 12 }}>
+          {workouts.length}{' '}
+          {workouts.length === 1
+            ? 'treino registrado'
+            : 'treinos registrados'}{' '}
+          neste aparelho.
+        </Text>
+
+        <Botao
+          title="Limpar todos os treinos"
+          variant="danger"
+          icon="trash-outline"
+          onPress={confirmClear}
+          disabled={workouts.length === 0}
+        />
       </Cartao>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { padding: 16 },
-  card: { marginBottom: 16 },
-  title: { fontSize: 18, fontWeight: '800', marginBottom: 4 },
-  chips: { flexDirection: 'row', flexWrap: 'wrap' },
+  content: {
+    padding: 16,
+  },
+  card: {
+    marginBottom: 16,
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: '800',
+    marginBottom: 4,
+  },
+  welcome: {
+    fontSize: 20,
+    fontWeight: '800',
+    marginTop: 10,
+    marginBottom: 6,
+  },
+  chips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
 });
