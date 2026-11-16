@@ -16,6 +16,7 @@ import PesoAltura from '../screens/PesoAltura';
 import Configuracoes from '../screens/Configuracoes';
 import TelaLoading from '../components/ui/TelaLoading';
 import ErroBoundary from '../components/ui/ErroBoundary';
+import Logo from '../components/ui/Logo';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -56,7 +57,11 @@ function Abas() {
         ),
       })}
     >
-      <Tab.Screen name="Treinar" component={EscolherFoco} options={{ title: 'Treinar' }} />
+      <Tab.Screen
+        name="Treinar"
+        component={EscolherFoco}
+        options={{ title: 'Treinar', headerTitle: () => <Logo height={39} /> }}
+      />
       <Tab.Screen
         name="Historico"
         component={TodosTreinos}
@@ -102,7 +107,6 @@ export default function Navegacao() {
       border: colors.border,
     },
   };
-
   return (
     <ErroBoundary>
       <NavigationContainer theme={navTheme}>
