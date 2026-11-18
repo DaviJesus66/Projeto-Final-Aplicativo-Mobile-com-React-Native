@@ -69,7 +69,11 @@ export default function Configuracoes() {
       if (ligar) {
         const resultado = await ativarLembrete(lembrete.hour, lembrete.minute);
         if (!resultado.ok) {
-          showError('Permita as notificações nas configurações do aparelho.');
+          showError(
+            resultado.motivo === 'web'
+              ? 'Lembretes só funcionam no app do celular, não no navegador.'
+              : 'Permita as notificações nas configurações do aparelho.'
+          );
           return;
         }
         setLembrete(resultado.config);
@@ -79,7 +83,10 @@ export default function Configuracoes() {
         showInfo('Lembrete desativado.');
       }
     } catch (e) {
-      showError('Não foi possível configurar o lembrete neste dispositivo.');
+      // O motivo real aparece no terminal (npx expo start) e, resumido, na mensagem.
+      console.warn('Falha ao configurar o lembrete:', e);
+      const motivo = e && e.message ? ` (${String(e.message).slice(0, 90)})` : '';
+      showError(`Não foi possível configurar o lembrete neste dispositivo.${motivo}`);
     } finally {
       setOcupado(false);
     }
@@ -95,6 +102,7 @@ export default function Configuracoes() {
       setLembrete(config);
       if (config.enabled) showSuccess(`Lembrete reagendado para ${formatarHorario(hour, minute)}.`);
     } catch (e) {
+      console.warn('Falha ao alterar o horário do lembrete:', e);
       showError('Não foi possível alterar o horário do lembrete.');
     }
   }

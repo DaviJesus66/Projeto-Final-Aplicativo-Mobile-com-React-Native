@@ -11,6 +11,7 @@ import Botao from '../components/ui/Botao';
 import { MUSCLE_OPTIONS, groupOfMuscle } from '../constants/workouts';
 import { formatDate, isFuture } from '../utils/date';
 import { confirmar } from '../utils/dialogo';
+import { CARGA_MAX, MASCARA_CARGA, formatarCarga, paraNumero } from '../utils/cargas';
 
 const pad = (n) => String(n).padStart(2, '0');
 const toInputValue = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -65,6 +66,13 @@ export function validate(values) {
   if (isFuture(values.date)) {
     errors.date = 'A data não pode ser futura.';
   }
+  // Carga é opcional, mas se for preenchida precisa estar entre 0 e o máximo.
+  if (String(values.weight).trim() !== '') {
+    const kg = paraNumero(values.weight);
+    if (kg === null || kg < 0 || kg > CARGA_MAX) {
+      errors.weight = `A carga deve ficar entre 0 e ${CARGA_MAX} kg.`;
+    }
+  }
   return errors;
 }
 
@@ -83,6 +91,7 @@ export default function GerenciarTreino({ route, navigation }) {
     muscle: editing?.muscle ?? preset?.muscle ?? '',
     sets: String(editing?.sets ?? preset?.sets ?? ''),
     reps: String(editing?.reps ?? preset?.reps ?? ''),
+    weight: editing?.weight ? String(editing.weight) : '',
     date: editing ? new Date(editing.date) : new Date(),
   }));
   const [errors, setErrors] = useState({});
@@ -105,6 +114,10 @@ export default function GerenciarTreino({ route, navigation }) {
 
   function handleNumeric(field, text) {
     if (/^\d{0,3}$/.test(text)) handleChange(field, text);
+  }
+
+  function handleWeight(text) {
+    if (MASCARA_CARGA.test(text)) handleChange('weight', text.replace(',', '.'));
   }
 
   function confirmDelete() {
@@ -153,6 +166,7 @@ export default function GerenciarTreino({ route, navigation }) {
       group: groupOfMuscle(form.muscle),
       sets: parseInt(form.sets, 10),
       reps: parseInt(form.reps, 10),
+      weight: paraNumero(form.weight),
       date: form.date.toISOString(),
     };
 
@@ -214,6 +228,15 @@ export default function GerenciarTreino({ route, navigation }) {
             />
           </View>
         </View>
+
+        <CampoTexto
+          label="Carga (kg) - opcional"
+          value={formatarCarga(form.weight)}
+          onChangeText={handleWeight}
+          keyboardType="decimal-pad"
+          placeholder="Ex.: 40"
+          error={errors.weight}
+        />
 
         {Platform.OS === 'ios' ? (
           <View style={{ marginBottom: 16 }}>

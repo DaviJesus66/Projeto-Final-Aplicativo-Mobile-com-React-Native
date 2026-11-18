@@ -11,8 +11,7 @@ import { useMeasures } from '../store/measures-context';
 import EscolherFoco from '../screens/EscolherFoco';
 import FichaTreino from '../screens/FichaTreino';
 import ExecutarExercicio from '../screens/ExecutarExercicio';
-import TodosTreinos from '../screens/TodosTreinos';
-import TreinosRecentes from '../screens/TreinosRecentes';
+import Treinos from '../screens/Treinos';
 import GerenciarTreino from '../screens/GerenciarTreino';
 import PesoAltura from '../screens/PesoAltura';
 import Configuracoes from '../screens/Configuracoes';
@@ -28,8 +27,7 @@ const Tab = createBottomTabNavigator();
 // [Ícone ativo, Ícone inativo]
 const TAB_ICONS = {
   Treinar: ['barbell', 'barbell-outline'],
-  Historico: ['list', 'list-outline'],
-  Semana: ['calendar', 'calendar-outline'],
+  Treinos: ['list', 'list-outline'],
   Corpo: ['body', 'body-outline'],
   Config: ['settings', 'settings-outline'],
 };
@@ -67,20 +65,10 @@ function Abas() {
         options={{ title: 'Treinar', headerTitle: () => <Logo height={30} /> }}
       />
       <Tab.Screen
-        name="Historico"
-        component={TodosTreinos}
+        name="Treinos"
+        component={Treinos}
         options={({ navigation }) => ({
-          title: 'Todos os treinos',
-          tabBarLabel: 'Histórico',
-          headerRight: () => <AddButton navigation={navigation} color={colors.primary} />,
-        })}
-      />
-      <Tab.Screen
-        name="Semana"
-        component={TreinosRecentes}
-        options={({ navigation }) => ({
-          title: 'Últimos 7 dias',
-          tabBarLabel: 'Semana',
+          title: 'Treinos',
           headerRight: () => <AddButton navigation={navigation} color={colors.primary} />,
         })}
       />

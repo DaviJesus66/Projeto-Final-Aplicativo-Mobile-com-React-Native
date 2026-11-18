@@ -5,6 +5,7 @@ import { useTheme } from '../../store/theme-context';
 import { cardShadow, radius } from '../../constants/theme';
 import { groupById } from '../../constants/workouts';
 import { formatDate } from '../../utils/date';
+import { formatarCarga } from '../../utils/cargas';
 
 export default function TreinoItem({ workout, onPress }) {
   const { colors } = useTheme();
@@ -28,6 +29,7 @@ export default function TreinoItem({ workout, onPress }) {
         </Text>
         <Text style={{ color: colors.textMuted, fontSize: 13 }}>
           {workout.muscle} · {formatDate(workout.date)}
+          {Number(workout.weight) > 0 ? ` · ${formatarCarga(workout.weight)} kg` : ''}
         </Text>
       </View>
       <View style={[styles.badge, { backgroundColor: colors.primary }]}>

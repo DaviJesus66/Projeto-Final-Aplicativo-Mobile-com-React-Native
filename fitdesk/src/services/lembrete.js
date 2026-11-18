@@ -42,43 +42,83 @@ async function salvarLembrete(config) {
 }
 
 async function cancelarAgendado(id) {
-  if (id) await Notifications.cancelScheduledNotificationAsync(id);
+  if (!id) return;
+  try {
+    await Notifications.cancelScheduledNotificationAsync(id);
+  } catch (e) {
+    // Um id antigo ou inválido não pode impedir o agendamento de um lembrete novo.
+    console.warn('Não foi possível cancelar o lembrete anterior:', e);
+  }
+}
+
+// Diz em qual etapa o erro aconteceu, para a mensagem mostrada ao usuário ajudar a achar a causa.
+async function etapa(nome, fn) {
+  try {
+    return await fn();
+  } catch (e) {
+    throw new Error(`${nome}: ${(e && e.message) || e}`);
+  }
 }
 
 // Pede permissão, agenda a notificação diária e guarda o id para poder cancelar depois.
-// Devolve { ok: false } se o usuário negar a permissão.
+// Devolve { ok: false, motivo } quando não dá para ativar sem ser um erro:
+// motivo 'web' (sem notificações no navegador) ou 'permissao' (o usuário negou).
 export async function ativarLembrete(hour, minute) {
-  // No Android 13+ o canal precisa existir antes de pedir a permissão.
+  if (Platform.OS === 'web') return { ok: false, motivo: 'web' };
+
+  // No Android 8+ toda notificação precisa de um canal, e no Android 13+ ele precisa existir
+  // antes de pedir a permissão. Se a criação falhar, seguimos: o sistema usa o canal padrão.
+  let canalCriado = false;
   if (Platform.OS === 'android') {
-    await Notifications.setNotificationChannelAsync(CANAL, {
-      name: 'Lembrete de treino',
-      importance: Notifications.AndroidImportance.DEFAULT,
-    });
+    try {
+      await Notifications.setNotificationChannelAsync(CANAL, {
+        name: 'Lembrete de treino',
+        importance: Notifications.AndroidImportance.DEFAULT,
+      });
+      canalCriado = true;
+    } catch (e) {
+      console.warn('Canal de notificação não criado:', e);
+    }
   }
 
-  let { status } = await Notifications.getPermissionsAsync();
-  if (status !== 'granted') {
-    ({ status } = await Notifications.requestPermissionsAsync());
-  }
-  if (status !== 'granted') return { ok: false };
+  const { status } = await etapa('permissão', async () => {
+    let atualPermissao = await Notifications.getPermissionsAsync();
+    if (atualPermissao.status !== 'granted') {
+      atualPermissao = await Notifications.requestPermissionsAsync();
+    }
+    return atualPermissao;
+  });
+  if (status !== 'granted') return { ok: false, motivo: 'permissao' };
 
   const atual = await carregarLembrete();
   await cancelarAgendado(atual.id);
 
-  const id = await Notifications.scheduleNotificationAsync({
-    content: {
-      title: 'Hora de treinar! 💪',
-      body: 'Abra o Fitdesk e escolha o treino de hoje.',
-    },
-    trigger: {
-      type: Notifications.SchedulableTriggerInputTypes.DAILY,
-      hour,
-      minute,
-      channelId: CANAL,
-    },
+  const conteudo = {
+    title: 'Hora de treinar! 💪',
+    body: 'Abra o Fitdesk e escolha o treino de hoje.',
+  };
+  const gatilho = {
+    type: Notifications.SchedulableTriggerInputTypes.DAILY,
+    hour,
+    minute,
+  };
+
+  // Primeiro tenta com o canal; se o aparelho recusar, tenta de novo sem ele.
+  const id = await etapa('agendamento', async () => {
+    if (canalCriado) {
+      try {
+        return await Notifications.scheduleNotificationAsync({
+          content: conteudo,
+          trigger: { ...gatilho, channelId: CANAL },
+        });
+      } catch (e) {
+        console.warn('Agendamento com canal falhou, tentando sem canal:', e);
+      }
+    }
+    return Notifications.scheduleNotificationAsync({ content: conteudo, trigger: gatilho });
   });
 
-  const config = await salvarLembrete({ enabled: true, hour, minute, id });
+  const config = await etapa('salvar', () => salvarLembrete({ enabled: true, hour, minute, id }));
   return { ok: true, config };
 }
 
